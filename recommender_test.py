@@ -224,7 +224,7 @@ class HAMRecommendStreamlit:
                     with st.container():
                         st.image(img_data, 
                                 caption=f"{art.title[:50]}..." if len(art.title) > 50 else art.title,
-                                use_container_width=True)
+                                width=None)
                         if st.button("Remove", key=f"remove_{idx}"):
                             to_remove.append(idx)
         
@@ -428,7 +428,7 @@ class HAMRecommendStreamlit:
                                 # Image
                                 st.image(
                                     img["image_data"], 
-                                    use_container_width=True,
+                                    width=None,
                                     output_format="auto"
                                 )
                                 
@@ -462,7 +462,7 @@ class HAMRecommendStreamlit:
                 img_data = st.session_state.liked_images.get(idx)
                 
                 if img_data:
-                    st.image(img_data, caption=art['title'], use_container_width=True)
+                    st.image(img_data, caption=art['title'], width=None)
                     if st.button("Remove", key=f"remove_{idx}"):
                         to_remove.append(idx)
                 else:

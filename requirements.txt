@@ -16,7 +16,7 @@ lz4>=4.0.0
 
 
 ### TRANSITIVE DEPENDENCIES ###
-# These are pulled in by your core packages but explicitly pinned
+# explicitly pinned
 # to prevent conflicts in the cloud environment:
 click==8.1.7
 scipy==1.15.2
@@ -30,6 +30,6 @@ python-dateutil==2.9.0.post0
 pytz==2024.1
 tzdata==2024.1
 
-### OPTIONAL BUT RECOMMENDED ###
+### OPTIONAL  ###
 setuptools==69.5.1  # Prevents build issues
 wheel==0.43.0  # For dependency resolution
