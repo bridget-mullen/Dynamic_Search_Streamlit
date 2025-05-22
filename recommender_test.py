@@ -34,16 +34,16 @@ def download_from_gdrive(file_id, dest):
     try:
         gdown.download(id=file_id, output=dest, quiet=False)
     except Exception as e:
-        print(f"Download failed for {dest} (ID: {file_id}): {e}")
+        st.error(f"Download failed for {dest} (ID: {file_id}): {e}")
 
 @st.cache_resource
 def download_and_prepare_files():
     for name, (filename, file_id) in GDRIVE_FILES.items():
         if not os.path.exists(filename):
-            st.info(f"Downloading {filename}...")
+           # st.info(f"Downloading {filename}...")
             try:
                 download_from_gdrive(file_id, filename)
-                st.success(f"Downloaded {filename}")
+              #  st.success(f"Downloaded {filename}")
             except Exception as e:
                 st.error(f"Failed to download {filename}: {e}")
                 st.stop()
