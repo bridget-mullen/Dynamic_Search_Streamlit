@@ -1,0 +1,4 @@
+swig
+libopenblas-dev
+g++
+cmake

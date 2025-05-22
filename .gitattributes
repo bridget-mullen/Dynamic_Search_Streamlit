@@ -1,0 +1,6 @@
+*.joblib filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+.faiss filter=lfs diff=lfs merge=lfs -text
+*.faiss filter=lfs diff=lfs merge=lfs -text
+*.lz4 filter=lfs diff=lfs merge=lfs -text
+*.faiss.lz4 filter=lfs diff=lfs merge=lfs -text
