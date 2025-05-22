@@ -8,12 +8,8 @@ from io import BytesIO
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
 import os
-import gdown
-import tarfile
-import zstandard as zstd
-import gzip
-import shutil
 import lz4.frame
+import gdown
 
 # Set page config
 
@@ -25,75 +21,89 @@ st.set_page_config(
 
 
 
+# File IDs from Google Drive
+GDRIVE_FILES = {
+    "csv": ("small_HAM.csv", "1ChFI1o0WqVHZthHp-YwdFutBga_pYAdK"),
+    "image_index": ("image_index4.faiss", "1X9rWa84Ve1fZX9AXcIGzt8wjFvYqis7n"),
+    "compressed_text_index": ("tfidf_index_6.faiss.lz4", "1g8qCUt4W63PCGU8ShTsJX-4Xgi-hw95-"),
+    "joblib": ("tfidf_data_6.joblib", "16x0CpZiFS-JKVWRal6pRTdAJ-HxcWJ9v"),
+}
+
+def download_from_gdrive(file_id, dest):
+    """Download a file from Google Drive using gdown."""
+    try:
+        gdown.download(id=file_id, output=dest, quiet=False)
+    except Exception as e:
+        print(f"Download failed for {dest} (ID: {file_id}): {e}")
+
+@st.cache_resource
+def download_and_prepare_files():
+    for name, (filename, file_id) in GDRIVE_FILES.items():
+        if not os.path.exists(filename):
+            st.info(f"Downloading {filename}...")
+            try:
+                download_from_gdrive(file_id, filename)
+                st.success(f"Downloaded {filename}")
+            except Exception as e:
+                st.error(f"Failed to download {filename}: {e}")
+                st.stop()
+
 @st.cache_resource
 def decompress_index_if_needed():
-    compressed_name = "tfidf_index_6.faiss.lz4"  # Changed extension
+    compressed_name = GDRIVE_FILES["compressed_text_index"][0]
     decompressed_name = "tfidf_index_6.faiss"
     
     if not os.path.exists(decompressed_name):
         if not os.path.exists(compressed_name):
-            st.error(f"Compressed index file {compressed_name} not found in the working directory")
+            st.error(f"Missing compressed index: {compressed_name}")
             st.stop()
-            
         try:
-            # Fast LZ4 decompression
             with lz4.frame.open(compressed_name, "rb") as f_in:
                 with open(decompressed_name, "wb") as f_out:
                     f_out.write(f_in.read())
         except Exception as e:
-            st.error(f"Failed to decompress index: {e}")
+            st.error(f"Decompression failed: {e}")
             st.stop()
     
     return True
 
 @st.cache_resource
 def load_data():
-    """Load all data with proper index handling"""
-    decompress_index_if_needed()  # Ensure the index is decompressed
-    
-    df = pd.read_csv('small_HAM.csv')
+    download_and_prepare_files()
+    decompress_index_if_needed()
+
+    df = pd.read_csv(GDRIVE_FILES["csv"][0])
     
     # Clean string columns
-    string_cols = ['title', 'artist_name', 'date']
-    for col in string_cols:
+    for col in ['title', 'artist_name', 'date']:
         if col in df.columns:
-            df[col] = df[col].apply(
-                lambda x: "" if pd.isna(x) or str(x).lower() == 'nan' else str(x).strip()
-             )
+            df[col] = df[col].apply(lambda x: "" if pd.isna(x) or str(x).lower() == 'nan' else str(x).strip())
 
-    # Load FAISS indices with memory mapping
     def load_index(path):
         if not os.path.exists(path):
-            raise FileNotFoundError(f"Index file missing: {path}")
+            raise FileNotFoundError(f"Missing index file: {path}")
         return faiss.read_index(path, faiss.IO_FLAG_MMAP)
 
     data = {
         "df": df,
-        "image_index": load_index("image_index4.faiss"),
+        "image_index": load_index(GDRIVE_FILES["image_index"][0]),
         "text_index": load_index("tfidf_index_6.faiss"),
-        "tfidf": load("tfidf_data_6.joblib")["vectorizer"]
+        "tfidf": load(GDRIVE_FILES["joblib"][0])["vectorizer"]
     }
     
     return data
 
-
-
-
+# Main app class
 class HAMRecommendStreamlit:
 
-
     def __init__(self):
-       
-
         self.init_session_state()
-        
         try:
-          
             self.data = load_data()
             self.df = self.data["df"]
             self.display_ui()
         except Exception as e:
-            st.error(f"Failed to load data: {str(e)}")
+            st.error(f"Data load error: {str(e)}")
             st.stop()
         
 

@@ -1,19 +1,17 @@
 ### CORE REQUIREMENTS ###
 streamlit==1.36.0
-
-faiss-cpu==1.9.0
+faiss-cpu==1.9.0  # Critical - must match your FAISS index version
 protobuf==4.25.3  # Must be <5.0.0 for FAISS compatibility
 numpy==1.26.4  # Must match FAISS build
 pandas==2.2.1
 scikit-learn==1.6.1  # For TF-IDF vectorizer
 joblib==1.4.0  # For model serialization
 
-
 ### FILE HANDLING ###
-
+pyarrow==16.1.0  # For efficient DataFrame serialization
 Pillow==10.3.0  # Image processing
 requests==2.31.0  # For image downloads
-
+gdown == 5.2.0  
 lz4>=4.0.0
 
 
