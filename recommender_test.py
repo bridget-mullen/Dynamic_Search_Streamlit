@@ -5,6 +5,7 @@ import numpy as np
 from joblib import load
 import requests
 from io import BytesIO
+from sklearn.metrics.pairwise import cosine_similarity
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
 import os
@@ -25,7 +26,6 @@ st.set_page_config(
 GDRIVE_FILES = {
     "csv": ("small_HAM.csv", "1ChFI1o0WqVHZthHp-YwdFutBga_pYAdK"),
     "image_index": ("image_index4.faiss", "1X9rWa84Ve1fZX9AXcIGzt8wjFvYqis7n"),
-    "compressed_text_index": ("tfidf_index_test.faiss.lz4", "171QZ7HrZhLj3LmVFOkvaZY1qVnHABjVP"),
     "joblib": ("tfidf_data_test.joblib", "1LP7-d-V9j8ng20ZWYTW16oo_dTbxU5WJ"),
 }
 
@@ -49,28 +49,9 @@ def download_and_prepare_files():
                 st.stop()
 
 @st.cache_resource
-def decompress_index_if_needed():
-    compressed_name = GDRIVE_FILES["compressed_text_index"][0]
-    decompressed_name = "tfidf_index_test.faiss"
-    
-    if not os.path.exists(decompressed_name):
-        if not os.path.exists(compressed_name):
-            st.error(f"Missing compressed index: {compressed_name}")
-            st.stop()
-        try:
-            with lz4.frame.open(compressed_name, "rb") as f_in:
-                with open(decompressed_name, "wb") as f_out:
-                    f_out.write(f_in.read())
-        except Exception as e:
-            st.error(f"Decompression failed: {e}")
-            st.stop()
-    
-    return True
-
-@st.cache_resource
 def load_data():
     download_and_prepare_files()
-    decompress_index_if_needed()
+  #  decompress_index_if_needed()
 
     df = pd.read_csv(GDRIVE_FILES["csv"][0])
     
@@ -87,8 +68,9 @@ def load_data():
     data = {
         "df": df,
         "image_index": load_index(GDRIVE_FILES["image_index"][0]),
-        "text_index": load_index("tfidf_index_test.faiss"),
-        "tfidf": load(GDRIVE_FILES["joblib"][0])["vectorizer"]
+
+        "tfidf": load(GDRIVE_FILES["joblib"][0])["vectorizer"],
+        "tfidf_matrix": load(GDRIVE_FILES["joblib"][0])['matrix']
       }
     
     return data
@@ -149,32 +131,36 @@ class HAMRecommendStreamlit:
 
     
     def search_for_text(self, query):
-        """Search for and return similar objects based on text query"""
+        """Search for and return similar objects based on text query using cosine similarity"""
         try:
             # Create query vector
             query_vec = self.data['tfidf'].transform([query])
-            #query_vec /= np.linalg.norm(query_vec)
-           
-            # Get results
-            D, I = self.data['text_index'].search(query_vec.toarray().astype("float32"), k=100)  # Get more to account for filtering
-        
+            
+            # Calculate cosine similarity against all documents
+            cosine_sim = cosine_similarity(query_vec, self.data['tfidf_matrix'])
+            
+            # Get top k results (sorted descending)
+            k = 36  # Number of results to return
+            top_indices = cosine_sim.argsort()[0][-k:][::-1]  # Indices of top matches
+            top_scores = np.sort(cosine_sim[0])[-k:][::-1]    # Corresponding scores
+            
+            # Filter results (optional - remove if you want all results)
             new_recommendations = []
             new_scores = []
-                
-            for idx, score in zip(I[0], D[0]):
-                if  score > 0:
+            for idx, score in zip(top_indices, top_scores):
+                if score > 0:  # Only include positive scores
                     new_recommendations.append(idx)
                     new_scores.append(score)
-                
-            if not new_recommendations:  # If no results with score > 0
-                st.write(f"No artworks match your query: '{query}'")
-                # Clear previous results if no matches found
+            
+            # Handle results
+            if not new_recommendations:
+                st.info(f"No artworks match your query: '{query}'")
                 if st.session_state.batches:
                     st.session_state.batches = []
             else:
-                self.show_images(new_recommendations, new_scores,
+                self.show_images(new_recommendations[:30], new_scores[:30],
                                batch_name=f"Search Results for: '{query}'")
-            
+                
         except Exception as e:
             st.error(f"Search failed: {str(e)}")
                 
