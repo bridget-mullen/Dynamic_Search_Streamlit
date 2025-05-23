@@ -1,6 +1,6 @@
 ### CORE REQUIREMENTS ###
 streamlit==1.36.0
-faiss-cpu==1.9.0  # Critical - must match your FAISS index version
+faiss-cpu== 1.7.4   # Critical - must match your FAISS index version
 protobuf==4.25.3  # Must be <5.0.0 for FAISS compatibility
 numpy==1.26.4  # Must match FAISS build
 pandas==2.2.1
