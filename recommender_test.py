@@ -140,7 +140,7 @@ class HAMRecommendStreamlit:
             cosine_sim = cosine_similarity(query_vec, self.data['tfidf_matrix'])
             
             # Get top k results (sorted descending)
-            k = 36  # Number of results to return
+            k = 100  # Number of results to return
             top_indices = cosine_sim.argsort()[0][-k:][::-1]  # Indices of top matches
             top_scores = np.sort(cosine_sim[0])[-k:][::-1]    # Corresponding scores
             
@@ -158,7 +158,7 @@ class HAMRecommendStreamlit:
                 if st.session_state.batches:
                     st.session_state.batches = []
             else:
-                self.show_images(new_recommendations[:30], new_scores[:30],
+                self.show_images(new_recommendations, new_scores,
                                batch_name=f"Search Results for: '{query}'")
                 
         except Exception as e:
