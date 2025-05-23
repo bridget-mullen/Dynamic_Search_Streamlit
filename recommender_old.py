@@ -23,10 +23,10 @@ st.set_page_config(
 
 # File IDs from Google Drive
 GDRIVE_FILES = {
-    "csv": ("small_HAM.csv", "1ChFI1o0WqVHZthHp-YwdFutBga_pYAdK"),
+    "csv": ("small_HAM.csv", "1Pcm-Vq7VO6bcVZucpWlDm-WDeTN5l7L7"),
     "image_index": ("image_index4.faiss", "1X9rWa84Ve1fZX9AXcIGzt8wjFvYqis7n"),
     "compressed_text_index": ("tfidf_index_test.faiss.lz4", "171QZ7HrZhLj3LmVFOkvaZY1qVnHABjVP"),
-    "joblib": ("tfidf_data_test.joblib", "11LP7-d-V9j8ng20ZWYTW16oo_dTbxU5WJ"),
+    "joblib": ("tfidf_data_test.joblib", "1LP7-d-V9j8ng20ZWYTW16oo_dTbxU5WJ"),
 }
 
 def download_from_gdrive(file_id, dest):
@@ -40,10 +40,10 @@ def download_from_gdrive(file_id, dest):
 def download_and_prepare_files():
     for name, (filename, file_id) in GDRIVE_FILES.items():
         if not os.path.exists(filename):
-            st.info(f"Downloading {filename}...")
+           # st.info(f"Downloading {filename}...")
             try:
                 download_from_gdrive(file_id, filename)
-                st.success(f"Downloaded {filename}")
+              #  st.success(f"Downloaded {filename}")
             except Exception as e:
                 st.error(f"Failed to download {filename}: {e}")
                 st.stop()
@@ -89,7 +89,7 @@ def load_data():
         "image_index": load_index(GDRIVE_FILES["image_index"][0]),
         "text_index": load_index("tfidf_index_test.faiss"),
         "tfidf": load(GDRIVE_FILES["joblib"][0])["vectorizer"]
-      }
+    }
     
     return data
 
@@ -156,7 +156,7 @@ class HAMRecommendStreamlit:
             #query_vec /= np.linalg.norm(query_vec)
            
             # Get results
-            D, I = self.data['text_index'].search(query_vec.toarray().astype("float32"), k=100)  # Get more to account for filtering
+            D, I = self.data['text_index'].search(query_vec.toarray().astype("float32"), k=36)  # Get more to account for filtering
         
             new_recommendations = []
             new_scores = []
@@ -172,18 +172,16 @@ class HAMRecommendStreamlit:
                 if st.session_state.batches:
                     st.session_state.batches = []
             else:
-                self.show_images(new_recommendations, new_scores,
+                self.show_images(new_recommendations[:30], new_scores[:30],
                                batch_name=f"Search Results for: '{query}'")
             
         except Exception as e:
             st.error(f"Search failed: {str(e)}")
-                
-
     
     def search_by_likes(self):
         """Get recommendations based ONLY on current likes"""
         if not st.session_state.current_likes:
-            st.warning("Please select some images first!")
+            st.warning("Please like some images first!")
             return
         
         # Clear previous recommendations
@@ -201,7 +199,7 @@ class HAMRecommendStreamlit:
             avg_embedding = np.mean(liked_embeddings, axis=0).reshape(1, -1)
             
             # Search similar items
-            D, I = index.search(avg_embedding.astype('float32'), k=50)
+            D, I = index.search(avg_embedding.astype('float32'), k=36)
             
             # Filter results
             current_likes = set(st.session_state.current_likes)
@@ -213,11 +211,11 @@ class HAMRecommendStreamlit:
             
             # Display results
             if recommendations:
-                idxs, scores = zip(*recommendations)
+                idxs, scores = zip(*recommendations[:21])
                 self.show_images(list(idxs), list(scores),
-                               batch_name="Image Search Results")
+                               batch_name="Recommended Based On Your Likes")
             else:
-                st.info("No new images found based on your search")
+                st.info("No new recommendations found based on your likes")
                 
         except Exception as e:
             st.error(f"Recommendation error: {str(e)}")
@@ -225,44 +223,35 @@ class HAMRecommendStreamlit:
                 st.warning("Your index might not support direct reconstruction")
             
     def display_liked_items(self):
-        """Display liked items in the left sidebar with single-click removal"""
-        # Create a copy to avoid modification during iteration
-        current_likes = list(st.session_state.current_likes)
-        
-        for idx in current_likes:
+        """Display liked items in the left sidebar"""
+        to_remove = []
+        for idx in st.session_state.current_likes:
             if 0 <= idx < len(self.df):
                 art = self.df.iloc[idx]
                 img_data = st.session_state.liked_images.get(idx)
                 
                 if img_data:
-                    col1, col2 = st.columns([4, 1])  # Split into image and button columns
-                    with col1:
+                    with st.container():
                         st.image(img_data, 
-                               caption=f"{art.title[:50]}..." if len(art.title) > 50 else art.title,
-                               width=None)
-                    with col2:
-                        # Use a form submit button with immediate action
-                        if st.button("❌", 
-                                   key=f"remove_{idx}",
-                                   help="Remove this image",
-                                   on_click=self.remove_single_image,
-                                   args=(idx,)):
-                            pass  # The removal happens in the callback
-    
-    def remove_single_image(self, idx):
-        """Callback function for single-click removal"""
-        if idx in st.session_state.current_likes:
-            st.session_state.current_likes.remove(idx)
-        if idx in st.session_state.liked_images:
-            del st.session_state.liked_images[idx]
-        st.rerun()  # Force immediate update
-           
+                                caption=f"{art.title[:50]}..." if len(art.title) > 50 else art.title,
+                                width=None)
+                        if st.button("Remove", key=f"remove_{idx}"):
+                            to_remove.append(idx)
+        
+        # Process removals
+        if to_remove:
+            for idx in to_remove:
+                if idx in st.session_state.current_likes:
+                    st.session_state.current_likes.remove(idx)
+                if idx in st.session_state.liked_images:
+                    del st.session_state.liked_images[idx]
+            #st.rerun()
     
     def clear_likes(self):
         """Clear ALL current likes"""
         st.session_state.current_likes = []
         st.session_state.liked_images = {}
-        st.success("Cleared all current search images!")
+        st.success("Cleared all current likes!")
         st.rerun()
         
     def on_like_change(self, idx):
@@ -323,43 +312,22 @@ class HAMRecommendStreamlit:
     
     def display_ui(self):
         """Display the UI with left sidebar"""
+        # Use Streamlit's native sidebar for the likes panel
         with st.sidebar:
-            st.header("Your Search Images 🔍")
-            
-            # Add the search button at the top of the sidebar
-            if st.button("✨ Search Using Selected Images", 
-                        disabled=not st.session_state.current_likes,
-                        key="get_recommendations",
-                        help="Finds visually similar artworks based on your selections",
-                        type="primary"):
-                with st.spinner("Finding similar images..."):
-                    st.session_state.last_expanded = len(st.session_state.batches)
-                    self.search_by_likes()
-            
-            # Clear button next to search button
-            if st.button("Clear All Search Images", 
-                        type="secondary",
-                        disabled=not st.session_state.current_likes):
-                self.clear_likes()
-            st.divider() 
-            
-            # Display count and images
+            st.header("Your Likes ❤️")
             if st.session_state.current_likes:
-                st.write(f"{len(st.session_state.current_likes)} images selected")
+                st.write(f"{len(st.session_state.current_likes)} liked artworks")
                 self.display_liked_items()
             else:
-                st.write("No images selected yet")
-           
-     
-                
-                # Main content area
+                st.write("No liked artworks yet")
+
+        # Main content area
         self.display_main_content()
             
             
     def display_main_content(self):
         """Display main content with buttons"""
         st.title("HAM Dynamic Image Search")
-        st.markdown("🔍 *Search the Harvard Art Museum's Collection with text prompts or selected images to discover artworks*") 
         
         # Custom CSS for button styling
         st.markdown("""
@@ -398,9 +366,9 @@ class HAMRecommendStreamlit:
                     self.search_for_text(query)
                 else:
                     st.warning("Please enter search terms")
-                    """
+    
         # Recommendation button with custom styling
-        if st.button("✨ Search Using Selected Images", 
+        if st.button("✨ Find Images Similar to Likes", 
                     disabled=not st.session_state.current_likes,
                     key="get_recommendations"):
             with st.spinner("Finding images..."):
@@ -408,9 +376,8 @@ class HAMRecommendStreamlit:
                 self.search_by_likes()
         
         # Clear button
-        if st.button("Clear All Selected Images", type="secondary"):
+        if st.button("Clear All Likes", type="secondary"):
             self.clear_likes()
-        """
     
         # Display batches
         for batch_idx, batch in enumerate(st.session_state.batches):
@@ -481,7 +448,7 @@ class HAMRecommendStreamlit:
                                 # Like button container
                                 st.markdown('<div class="like-container">', unsafe_allow_html=True)
                                 st.checkbox(
-                                    "✅ Select for search",  
+                                    "❤️ Like this artwork",  # More descriptive label
                                     value=img["idx"] in st.session_state.current_likes,
                                     #key=f"like_{batch_idx}_{img['idx']}",
                                     key=f"like_{batch['name']}_{img['idx']}_{batch_idx}_{i}",  # Unique key
@@ -490,6 +457,36 @@ class HAMRecommendStreamlit:
                                     label_visibility="visible"
                                 )
                                 st.markdown('</div>', unsafe_allow_html=True)
+                                
+                                
+
+    def display_sidebar(self):
+        """Display the sidebar content"""
+        st.header("Your Likes")
+        st.write(f"Liked artworks: {len(st.session_state.current_likes)}")  # Updated reference
+        
+        to_remove = []
+        for idx in st.session_state.current_likes:  # Updated reference
+            if 0 <= idx < len(self.df):
+                art = self.df.iloc[idx]
+                img_data = st.session_state.liked_images.get(idx)
+                
+                if img_data:
+                    st.image(img_data, caption=art['title'], width=None)
+                    if st.button("Remove", key=f"remove_{idx}"):
+                        to_remove.append(idx)
+                else:
+                    st.error(f"Couldn't load image for {art.title}")
+            else:
+                to_remove.append(idx)
+        
+        if to_remove:
+            for idx in to_remove:
+                if idx in st.session_state.current_likes:  # Updated reference
+                    st.session_state.current_likes.remove(idx)
+                if idx in st.session_state.liked_images:
+                    del st.session_state.liked_images[idx]
+            st.rerun()
 
 # Run the app
 if __name__ == "__main__":
