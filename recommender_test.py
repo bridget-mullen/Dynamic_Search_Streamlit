@@ -40,7 +40,7 @@ def download_from_gdrive(file_id, dest):
 def download_and_prepare_files():
     for name, (filename, file_id) in GDRIVE_FILES.items():
         if not os.path.exists(filename):
-            st.info(f"Downloading {filename}...")
+           # st.info(f"Downloading {filename}...")
             try:
                 download_from_gdrive(file_id, filename)
                 st.success(f"Downloaded {filename}")
