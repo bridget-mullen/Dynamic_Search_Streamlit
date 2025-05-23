@@ -25,8 +25,8 @@ st.set_page_config(
 GDRIVE_FILES = {
     "csv": ("small_HAM.csv", "1ChFI1o0WqVHZthHp-YwdFutBga_pYAdK"),
     "image_index": ("image_index4.faiss", "1X9rWa84Ve1fZX9AXcIGzt8wjFvYqis7n"),
-    "compressed_text_index": ("tfidf_index_6.faiss.lz4", "1g8qCUt4W63PCGU8ShTsJX-4Xgi-hw95-"),
-    "joblib": ("tfidf_data_6.joblib", "16x0CpZiFS-JKVWRal6pRTdAJ-HxcWJ9v"),
+    "compressed_text_index": ("tfidf_index_test.faiss.lz4", "171QZ7HrZhLj3LmVFOkvaZY1qVnHABjVP"),
+    "joblib": ("tfidf_data_test.joblib", "11LP7-d-V9j8ng20ZWYTW16oo_dTbxU5WJ"),
 }
 
 def download_from_gdrive(file_id, dest):
@@ -51,7 +51,7 @@ def download_and_prepare_files():
 @st.cache_resource
 def decompress_index_if_needed():
     compressed_name = GDRIVE_FILES["compressed_text_index"][0]
-    decompressed_name = "tfidf_index_6.faiss"
+    decompressed_name = "tfidf_index_test.faiss"
     
     if not os.path.exists(decompressed_name):
         if not os.path.exists(compressed_name):
@@ -87,7 +87,7 @@ def load_data():
     data = {
         "df": df,
         "image_index": load_index(GDRIVE_FILES["image_index"][0]),
-        "text_index": load_index("tfidf_index_6.faiss"),
+        "text_index": load_index("tfidf_index_test.faiss"),
         "tfidf": load(GDRIVE_FILES["joblib"][0])["vectorizer"]
     }
     
