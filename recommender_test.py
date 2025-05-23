@@ -43,7 +43,7 @@ def download_and_prepare_files():
            # st.info(f"Downloading {filename}...")
             try:
                 download_from_gdrive(file_id, filename)
-                st.success(f"Downloaded {filename}")
+       
             except Exception as e:
                 st.error(f"Failed to download {filename}: {e}")
                 st.stop()
