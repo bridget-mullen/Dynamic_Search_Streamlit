@@ -154,10 +154,10 @@ class HAMRecommendStreamlit:
             # Create query vector
             query_vec = self.data['tfidf'].transform([query])
             #query_vec /= np.linalg.norm(query_vec)
-            
+           
             # Get results
             D, I = self.data['text_index'].search(query_vec.toarray().astype("float32"), k=36)  # Get more to account for filtering
-            
+        
             new_recommendations = []
             new_scores = []
                 
@@ -166,14 +166,17 @@ class HAMRecommendStreamlit:
                     new_recommendations.append(idx)
                     new_scores.append(score)
                 
-            self.show_images(new_recommendations[:30], new_scores[:30], 
+            if not new_recommendations:  # If no results with score > 0
+                st.write(f"No artworks match your query: '{query}'")
+                # Clear previous results if no matches found
+                if st.session_state.batches:
+                    st.session_state.batches = []
+            else:
+                self.show_images(new_recommendations[:30], new_scores[:30],
                                batch_name=f"Search Results for: '{query}'")
             
         except Exception as e:
             st.error(f"Search failed: {str(e)}")
-                
-            # Show results
-           # self.show_images(I[0], D[0], batch_name=f"Search Results for: '{query}'")
     
     def search_by_likes(self):
         """Get recommendations based ONLY on current likes"""
@@ -184,33 +187,40 @@ class HAMRecommendStreamlit:
         # Clear previous recommendations
         self.clear_past_recommendations()
         
+        
         try:
-            # Use only current likes for recommendations
-            current_likes = st.session_state.current_likes
-            liked_embeddings = [np.array(eval(self.df.iloc[idx]['image_embedding'])) 
-                              for idx in current_likes]
+            index = self.data['image_index']
             
-            avg_embedding = np.mean(liked_embeddings, axis=0).reshape(1, -1).astype('float32')
+            # Get all embeddings at once (flat indexes store them contiguously)
+            all_embeddings = index.reconstruct_n(0, index.ntotal)
             
-            D, I = self.data['image_index'].search(avg_embedding, k=36)
+            # Get embeddings for liked items
+            liked_embeddings = all_embeddings[st.session_state.current_likes]
+            avg_embedding = np.mean(liked_embeddings, axis=0).reshape(1, -1)
             
-            new_recommendations = []
-            new_scores = []
+            # Search similar items
+            D, I = index.search(avg_embedding.astype('float32'), k=36)
             
-            for idx, score in zip(I[0], D[0]):
-                if idx not in current_likes and score > 0:
-                    new_recommendations.append(idx)
-                    new_scores.append(score)
+            # Filter results
+            current_likes = set(st.session_state.current_likes)
+            recommendations = [
+                (int(idx), float(score)) 
+                for idx, score in zip(I[0], D[0])
+                if idx not in current_likes and score > 0
+            ]
             
-            # Filter out already liked images
-           # new_recommendations = [idx for idx in I[0] if idx not in current_likes]
-            #new_scores = [D[0][i] for i, idx in enumerate(I[0]) if idx not in current_likes]
-            
-            self.show_images(new_recommendations[:21], new_scores[:21], 
-                            batch_name="Recommended Based On Your Current Likes")
-            
+            # Display results
+            if recommendations:
+                idxs, scores = zip(*recommendations[:21])
+                self.show_images(list(idxs), list(scores),
+                               batch_name="Recommended Based On Your Likes")
+            else:
+                st.info("No new recommendations found based on your likes")
+                
         except Exception as e:
-            st.error(f"Error getting recommendations: {str(e)}")
+            st.error(f"Recommendation error: {str(e)}")
+            if "reconstruct_n" in str(e):
+                st.warning("Your index might not support direct reconstruction")
             
     def display_liked_items(self):
         """Display liked items in the left sidebar"""
