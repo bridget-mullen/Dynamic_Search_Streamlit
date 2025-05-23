@@ -23,10 +23,10 @@ st.set_page_config(
 
 # File IDs from Google Drive
 GDRIVE_FILES = {
-    "csv": ("small_HAM.csv", "1ChFI1o0WqVHZthHp-YwdFutBga_pYAdK"),
+    "csv": ("small_HAM.csv", "1Pcm-Vq7VO6bcVZucpWlDm-WDeTN5l7L7"),
     "image_index": ("image_index4.faiss", "1X9rWa84Ve1fZX9AXcIGzt8wjFvYqis7n"),
     "compressed_text_index": ("tfidf_index_test.faiss.lz4", "171QZ7HrZhLj3LmVFOkvaZY1qVnHABjVP"),
-    "joblib": ("tfidf_data_test.joblib", "11LP7-d-V9j8ng20ZWYTW16oo_dTbxU5WJ"),
+    "joblib": ("tfidf_data_test.joblib", "1LP7-d-V9j8ng20ZWYTW16oo_dTbxU5WJ"),
 }
 
 def download_from_gdrive(file_id, dest):
